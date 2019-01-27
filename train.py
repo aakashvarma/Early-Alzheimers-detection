@@ -199,24 +199,25 @@ for c in [0.001, 0.1, 1, 10, 100]:
 SelectedLogRegModel = LogisticRegression(C=best_parameters).fit(X_trainval_scaled, Y_trainval)
 
 test_score = SelectedLogRegModel.score(X_test_scaled, Y_test)
-PredictedOutput = SelectedLogRegModel.predict(X_test_scaled)
-test_recall = recall_score(Y_test, PredictedOutput, pos_label=1)
-fpr, tpr, thresholds = roc_curve(Y_test, PredictedOutput, pos_label=1)
-test_auc = auc(fpr, tpr)
-print("Best accuracy on validation set is:", best_score)
-print("Best parameter for regularization (C) is: ", best_parameters)
-print("Test accuracy with best C parameter is", test_score)
-print("Test recall with the best C parameter is", test_recall)
-print("Test AUC with the best C parameter is", test_auc)
-m = 'Logistic Regression (w/ imputation)'
-acc.append([m, test_score, test_recall, test_auc, fpr, tpr, thresholds])
+PredictedOutput = SelectedLogRegModel.predict([[0., 0.36111111, 0.35294118, 0.25, 0.15384615, 0.17476852, 0.42767296, 0.72647059]])
+# test_recall = recall_score(Y_test, PredictedOutput, pos_label=1)
+# fpr, tpr, thresholds = roc_curve(Y_test, PredictedOutput, pos_label=1)
+# test_auc = auc(fpr, tpr)
+# print("Best accuracy on validation set is:", best_score)
+# print("Best parameter for regularization (C) is: ", best_parameters)
+# print("Test accuracy with best C parameter is", test_score)
+# print("Test recall with the best C parameter is", test_recall)
+# print("Test AUC with the best C parameter is", test_auc)
+# m = 'Logistic Regression (w/ imputation)'
+# acc.append([m, test_score, test_recall, test_auc, fpr, tpr, thresholds])
+
+print (PredictedOutput)
 
 
 
 
 
-
-
+# [0., 0.36111111, 0.35294118, 0.25, 0.15384615, 0.17476852, 0.42767296, 0.72647059]
 
 
 
