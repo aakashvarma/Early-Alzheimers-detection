@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+
 
 sns.set()
 
@@ -98,7 +100,121 @@ def analysis():
 
 
 
+############## Removing rows with missing values #################
 
+# Dropped the 8 rows with missing values in the column, SES
+df_dropna = df.dropna(axis=0, how='any')
+pd.isnull(df_dropna).sum()
+
+df_dropna['Group'].value_counts()
+
+
+############### Imputation ###############
+
+# Draw scatter plot between EDUC and SES
+x = df['EDUC']
+y = df['SES']
+
+ses_not_null_index = y[~y.isnull()].index
+x = x[ses_not_null_index]
+y = y[ses_not_null_index]
+
+# Draw trend line in red
+z = np.polyfit(x, y, 1)
+p = np.poly1d(z)
+plt.plot(x, y, 'go', x, p(x), "r--")
+plt.xlabel('Education Level(EDUC)')
+plt.ylabel('Social Economic Status(SES)')
+
+# plt.show()
+
+df.groupby(['EDUC'])['SES'].median()
+
+
+df["SES"].fillna(df.groupby("EDUC")["SES"].transform("median"), inplace=True)
+pd.isnull(df['SES']).value_counts()
+
+############### Splitting Train/Validation/Test Sets ###############
+
+from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
+from sklearn.preprocessing import MinMaxScaler 
+from sklearn.model_selection import cross_val_score
+
+# Dataset with imputation
+Y = df['Group'].values # Target for the model
+X = df[['M/F', 'Age', 'EDUC', 'SES', 'MMSE', 'eTIV', 'nWBV', 'ASF']] # Features we use
+
+# splitting into three sets
+X_trainval, X_test, Y_trainval, Y_test = train_test_split(X, Y, random_state=0)
+
+# Feature scaling
+scaler = MinMaxScaler().fit(X_trainval)
+X_trainval_scaled = scaler.transform(X_trainval)
+X_test_scaled = scaler.transform(X_test)
+
+# Dataset after dropping missing value rows
+Y = df_dropna['Group'].values # Target for the model
+X = df_dropna[['M/F', 'Age', 'EDUC', 'SES', 'MMSE', 'eTIV', 'nWBV', 'ASF']] # Features we use
+
+# splitting into three sets
+X_trainval_dna, X_test_dna, Y_trainval_dna, Y_test_dna = train_test_split(X, Y, random_state=0)
+
+# Feature scaling
+scaler = MinMaxScaler().fit(X_trainval_dna)
+X_trainval_scaled_dna = scaler.transform(X_trainval_dna)
+X_test_scaled_dna = scaler.transform(X_test_dna)
+
+
+
+
+
+
+# ################## classifier
+
+best_score = 0
+kfolds = 5
+
+for M in range(2, 15, 2): # combines M trees
+    for d in range(1, 9): # maximum number of features considered at each split
+        for m in range(1, 9): # maximum depth of the tree
+            # train the model
+            # n_jobs(4) is the number of parallel computing
+            forestModel = RandomForestClassifier(n_estimators=M, max_features=d, n_jobs=4,
+                                          max_depth=m, random_state=0)
+        
+            # perform cross-validation
+            scores = cross_val_score(forestModel, X_trainval_scaled, Y_trainval, cv=kfolds, scoring='accuracy')
+
+            # compute mean cross-validation accuracy
+            score = np.mean(scores)
+
+            # if we got a better score, store the score and parameters
+            if score > best_score:
+                best_score = score
+                best_M = M
+                best_d = d
+                best_m = m
+
+# Rebuild a model on the combined training and validation set        
+SelectedRFModel = RandomForestClassifier(n_estimators=M, max_features=d, max_depth=m, random_state=0).fit(X_trainval_scaled, Y_trainval )
+
+PredictedOutput = SelectedRFModel.predict(X_test_scaled)
+test_score = SelectedRFModel.score(X_test_scaled, Y_test)
+test_recall = recall_score(Y_test, PredictedOutput, pos_label=1)
+fpr, tpr, thresholds = roc_curve(Y_test, PredictedOutput, pos_label=1)
+test_auc = auc(fpr, tpr)
+print("Best accuracy on validation set is:", best_score)
+print("Best parameters of M, d, m are: ", best_M, best_d, best_m)
+print("Test accuracy with the best parameters is", test_score)
+print("Test recall with the best parameters is:", test_recall)
+print("Test AUC with the best parameters is:", test_auc)
+
+m = 'Random Forest'
+acc.append([m, test_score, test_recall, test_auc, fpr, tpr, thresholds])
+
+print("Feature importance: ")
+np.array([X.columns.values.tolist(), list(SelectedRFModel.feature_importances_)]).T
 
 
 
