@@ -172,49 +172,46 @@ X_test_scaled_dna = scaler.transform(X_test_dna)
 
 # ################## classifier
 
-best_score = 0
-kfolds = 5
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, roc_curve, auc
 
-for M in range(2, 15, 2): # combines M trees
-    for d in range(1, 9): # maximum number of features considered at each split
-        for m in range(1, 9): # maximum depth of the tree
-            # train the model
-            # n_jobs(4) is the number of parallel computing
-            forestModel = RandomForestClassifier(n_estimators=M, max_features=d, n_jobs=4,
-                                          max_depth=m, random_state=0)
-        
-            # perform cross-validation
-            scores = cross_val_score(forestModel, X_trainval_scaled, Y_trainval, cv=kfolds, scoring='accuracy')
 
-            # compute mean cross-validation accuracy
-            score = np.mean(scores)
+acc = []
 
-            # if we got a better score, store the score and parameters
-            if score > best_score:
-                best_score = score
-                best_M = M
-                best_d = d
-                best_m = m
+# Dataset with imputation
+best_score=0
+kfolds=5 # set the number of folds
 
-# Rebuild a model on the combined training and validation set        
-SelectedRFModel = RandomForestClassifier(n_estimators=M, max_features=d, max_depth=m, random_state=0).fit(X_trainval_scaled, Y_trainval )
+for c in [0.001, 0.1, 1, 10, 100]:
+    logRegModel = LogisticRegression(C=c)
+    # perform cross-validation
+    scores = cross_val_score(logRegModel, X_trainval, Y_trainval, cv=kfolds, scoring='accuracy') # Get recall for each parameter setting
+    
+    # compute mean cross-validation accuracy
+    score = np.mean(scores)
+    
+    # Find the best parameters and score
+    if score > best_score:
+        best_score = score
+        best_parameters = c
 
-PredictedOutput = SelectedRFModel.predict(X_test_scaled)
-test_score = SelectedRFModel.score(X_test_scaled, Y_test)
+# rebuild a model on the combined training and validation set
+SelectedLogRegModel = LogisticRegression(C=best_parameters).fit(X_trainval_scaled, Y_trainval)
+
+test_score = SelectedLogRegModel.score(X_test_scaled, Y_test)
+PredictedOutput = SelectedLogRegModel.predict(X_test_scaled)
 test_recall = recall_score(Y_test, PredictedOutput, pos_label=1)
 fpr, tpr, thresholds = roc_curve(Y_test, PredictedOutput, pos_label=1)
 test_auc = auc(fpr, tpr)
 print("Best accuracy on validation set is:", best_score)
-print("Best parameters of M, d, m are: ", best_M, best_d, best_m)
-print("Test accuracy with the best parameters is", test_score)
-print("Test recall with the best parameters is:", test_recall)
-print("Test AUC with the best parameters is:", test_auc)
-
-m = 'Random Forest'
+print("Best parameter for regularization (C) is: ", best_parameters)
+print("Test accuracy with best C parameter is", test_score)
+print("Test recall with the best C parameter is", test_recall)
+print("Test AUC with the best C parameter is", test_auc)
+m = 'Logistic Regression (w/ imputation)'
 acc.append([m, test_score, test_recall, test_auc, fpr, tpr, thresholds])
 
-print("Feature importance: ")
-np.array([X.columns.values.tolist(), list(SelectedRFModel.feature_importances_)]).T
+
 
 
 
